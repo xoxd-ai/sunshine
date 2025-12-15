@@ -1,0 +1,39 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":automergeAll",
+    ":automergeRequireAllStatusChecksMet",
+    ":automergePatch",
+    ":automergeMinor",
+    "schedule:weekly"
+  ],
+  "platform": "gitlab",
+  "gitLabAutomerge": true,
+  "automerge": true,
+  "automergeType": "branch",
+  "automergeStrategy": "merge-commit",
+  "prCreation": "immediate",
+  "prHourlyLimit": 0,
+  "branchConcurrentLimit": 0,
+  "rebaseWhen": "behind-base-branch",
+  "labels": ["renovate", "dependencies"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "automerge": true,
+      "groupName": "minor dependencies"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["major-update", "review-required"]
+    }
+  ],
+  "description": "Tinyland fork of Sunshine - self-hosted game streaming server"
+}
