@@ -136,7 +136,11 @@ build-rocky:
     - dnf config-manager --set-enabled crb || true
     # Install build dependencies
     - dnf groupinstall -y "Development Tools"
-    - dnf install -y cmake ninja-build gcc-c++ git npm doxygen graphviz
+    # Install GCC 13 for C++23 <format> support (GCC 11 doesn't have it)
+    - dnf install -y gcc-toolset-13-gcc gcc-toolset-13-gcc-c++
+    - source /opt/rh/gcc-toolset-13/enable
+    - echo "Using GCC $(gcc --version | head -1)"
+    - dnf install -y cmake ninja-build git npm doxygen graphviz
     - dnf install -y boost-devel curl-devel miniupnpc-devel openssl-devel opus-devel
     - dnf install -y libva-devel libvdpau-devel libdrm-devel
     - dnf install -y libX11-devel libXtst-devel libXrandr-devel libXfixes-devel
