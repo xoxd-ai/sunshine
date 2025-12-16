@@ -136,7 +136,7 @@ build-rocky:
     - dnf config-manager --set-enabled crb || true
     # Install build dependencies
     - dnf groupinstall -y "Development Tools"
-    - dnf install -y cmake ninja-build gcc-c++ git npm
+    - dnf install -y cmake ninja-build gcc-c++ git npm doxygen graphviz
     - dnf install -y boost-devel curl-devel miniupnpc-devel openssl-devel opus-devel
     - dnf install -y libva-devel libvdpau-devel libdrm-devel
     - dnf install -y libX11-devel libXtst-devel libXrandr-devel libXfixes-devel
