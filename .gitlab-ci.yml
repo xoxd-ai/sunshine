@@ -153,29 +153,21 @@ build-rocky:
     # Install tray/notification dependencies (appindicator or libnotify)
     - dnf install -y libnotify-devel libappindicator-gtk3-devel || dnf install -y libnotify-devel || true
     - dnf install -y ffmpeg-free-devel || dnf install -y ffmpeg-devel || true
-    # Install glibc-static for static libmvec (required by pre-built x265 with SIMD)
-    - dnf install -y glibc-static || true
-    # Verify libmvec is available
-    - 'ls -la /usr/lib64/libmvec* || echo "WARNING: libmvec not found"'
+    # Verify dynamic libmvec is available (required by pre-built x265 SIMD vectorization)
+    - 'ls -la /usr/lib64/libmvec.so* || echo "WARNING: libmvec.so not found"'
     # Initialize submodules
     - git submodule update --init --recursive
     # Get version
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
     - echo "Building Sunshine version $SUNSHINE_VERSION"
     # Configure - Note: Rocky 9 doxygen is too old (1.8), disable docs (requires 1.10+)
-    # Add static libmvec for vectorized math (required by x265 pre-built library with SIMD)
-    # Must use --whole-archive to include all symbols from libmvec.a
+    # The pre-built x265 uses vectorized math (_ZGVbN2v_log2) from glibc's libmvec.
+    # We must link libmvec DYNAMICALLY (not statically) because IFUNC requires runtime resolution.
+    # CMAKE_EXE_LINKER_FLAGS places libs at START of link line (before x265).
     - |
-      MVEC_STATIC="/usr/lib64/libmvec.a"
-      if [ -f "$MVEC_STATIC" ]; then
-        export MVEC_LIBS="-Wl,--push-state,--whole-archive $MVEC_STATIC -Wl,--pop-state -lm"
-      else
-        export MVEC_LIBS="-Wl,--no-as-needed -lmvec -lm -Wl,--as-needed"
-      fi
-      echo "Using MVEC_LIBS: $MVEC_LIBS"
       cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-        "-DCMAKE_CXX_STANDARD_LIBRARIES=$MVEC_LIBS" \
+        -DCMAKE_EXE_LINKER_FLAGS="-Wl,--no-as-needed -lmvec -lm -Wl,--as-needed" \
         -DBUILD_DOCS=OFF \
         -DSUNSHINE_ENABLE_WAYLAND=ON \
         -DSUNSHINE_ENABLE_X11=ON \
