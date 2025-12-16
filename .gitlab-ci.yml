@@ -70,10 +70,12 @@ build-darwin:
         -DBoost_ROOT=/opt/homebrew/opt/boost@1.85 \
         -DBOOST_INCLUDEDIR=/opt/homebrew/opt/boost@1.85/include \
         -DBOOST_LIBRARYDIR=/opt/homebrew/opt/boost@1.85/lib \
+        -DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl \
         -DSUNSHINE_ENABLE_WAYLAND=OFF \
         -DSUNSHINE_ENABLE_X11=OFF \
         -DSUNSHINE_ENABLE_DRM=OFF \
-        -DSUNSHINE_ENABLE_CUDA=OFF
+        -DSUNSHINE_ENABLE_CUDA=OFF \
+        -DCUDA_FAIL_ON_MISSING=OFF
     # Build
     - cmake --build build --parallel
     # Create app bundle structure
@@ -141,7 +143,8 @@ build-rocky:
         -DSUNSHINE_ENABLE_WAYLAND=ON \
         -DSUNSHINE_ENABLE_X11=ON \
         -DSUNSHINE_ENABLE_DRM=ON \
-        -DSUNSHINE_ENABLE_CUDA=OFF
+        -DSUNSHINE_ENABLE_CUDA=OFF \
+        -DCUDA_FAIL_ON_MISSING=OFF
     # Build
     - cmake --build build --parallel
     # Copy binary for packaging
