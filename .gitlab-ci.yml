@@ -165,7 +165,7 @@ build-rocky:
     # Configure - Note: Rocky 9 doxygen is too old (1.8), disable docs (requires 1.10+)
     # Add libmvec for vectorized math (required by x265 pre-built library with SIMD)
     # Use --whole-archive to force all libmvec symbols to be included, resolving SIMD math refs
-    - 'export LIBMVEC_FLAGS="-Wl,--push-state,--whole-archive /usr/lib64/libmvec.a -Wl,--pop-state -lm"'
+    - "export LIBMVEC_FLAGS='-Wl,--push-state,--whole-archive /usr/lib64/libmvec.a -Wl,--pop-state -lm'"
     - cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCMAKE_CXX_STANDARD_LIBRARIES="$LIBMVEC_FLAGS" -DBUILD_DOCS=OFF -DSUNSHINE_ENABLE_WAYLAND=ON -DSUNSHINE_ENABLE_X11=ON -DSUNSHINE_ENABLE_DRM=ON -DSUNSHINE_ENABLE_CUDA=OFF -DCUDA_FAIL_ON_MISSING=OFF
     # Build
     - cmake --build build --parallel
