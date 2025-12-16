@@ -140,7 +140,12 @@ build-rocky:
     - dnf install -y gcc-toolset-13-gcc gcc-toolset-13-gcc-c++
     - source /opt/rh/gcc-toolset-13/enable
     - echo "Using GCC $(gcc --version | head -1)"
-    - dnf install -y cmake ninja-build git npm doxygen graphviz
+    - dnf install -y cmake ninja-build git doxygen graphviz
+    # Install Node.js 20 from NodeSource (Vite requires Node 18+)
+    - dnf module reset nodejs -y || true
+    - dnf module enable nodejs:20 -y || true
+    - dnf install -y nodejs || (curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - && dnf install -y nodejs)
+    - echo "Using Node.js $(node --version)"
     - dnf install -y boost-devel curl-devel miniupnpc-devel openssl-devel opus-devel
     - dnf install -y libva-devel libvdpau-devel libdrm-devel
     - dnf install -y libX11-devel libXtst-devel libXrandr-devel libXfixes-devel
