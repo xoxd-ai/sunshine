@@ -161,7 +161,8 @@ build-rocky:
     # Configure - use single line to avoid YAML multiline issues
     # Note: Rocky 9 doxygen is too old (1.8), disable docs (requires 1.10+)
     # Add -lmvec for vectorized math (required by x265 pre-built library)
-    - cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCMAKE_EXE_LINKER_FLAGS="-lmvec -lm" -DBUILD_DOCS=OFF -DSUNSHINE_ENABLE_WAYLAND=ON -DSUNSHINE_ENABLE_X11=ON -DSUNSHINE_ENABLE_DRM=ON -DSUNSHINE_ENABLE_CUDA=OFF -DCUDA_FAIL_ON_MISSING=OFF
+    # Use CMAKE_CXX_STANDARD_LIBRARIES to append libs at END of link line (order matters!)
+    - cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCMAKE_CXX_STANDARD_LIBRARIES="-lmvec -lm" -DBUILD_DOCS=OFF -DSUNSHINE_ENABLE_WAYLAND=ON -DSUNSHINE_ENABLE_X11=ON -DSUNSHINE_ENABLE_DRM=ON -DSUNSHINE_ENABLE_CUDA=OFF -DCUDA_FAIL_ON_MISSING=OFF
     # Build
     - cmake --build build --parallel
     # Copy binary for packaging
