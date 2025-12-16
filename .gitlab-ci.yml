@@ -265,6 +265,12 @@ sign-darwin:
         echo "$APPLE_CERTIFICATE_BASE64" | base64 -d > certificate.p12
         security import certificate.p12 -k "$KEYCHAIN_NAME" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -A
 
+        # Import installer certificate for productsign
+        if [ -n "$APPLE_INSTALLER_CERTIFICATE_BASE64" ]; then
+          echo "$APPLE_INSTALLER_CERTIFICATE_BASE64" | base64 -d > installer_certificate.p12
+          security import installer_certificate.p12 -k "$KEYCHAIN_NAME" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/productsign -A
+        fi
+
         if [ -n "$APPLE_DEVELOPER_ID_CA_G2" ]; then
           echo "$APPLE_DEVELOPER_ID_CA_G2" | base64 -d > DeveloperIDG2CA.cer
           security import DeveloperIDG2CA.cer -k "$KEYCHAIN_NAME" -T /usr/bin/codesign -T /usr/bin/productsign -A || true
