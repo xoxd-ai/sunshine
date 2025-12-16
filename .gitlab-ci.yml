@@ -36,6 +36,7 @@ variables:
   image: rockylinux:9
   before_script:
     - dnf install -y epel-release
+    - dnf makecache
     - dnf update -y
 
 # =============================================================================
@@ -49,7 +50,7 @@ build-darwin:
   script:
     # Install dependencies via Homebrew (libva is Linux-only, skip on macOS)
     - brew install cmake ninja boost curl miniupnpc node openssl opus pkg-config
-    - brew install ffmpeg
+    - brew install ffmpeg doxygen graphviz
     # Export paths
     - export PATH="/opt/homebrew/bin:$PATH"
     - export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl/lib/pkgconfig"
