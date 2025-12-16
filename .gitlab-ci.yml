@@ -49,11 +49,14 @@ build-darwin:
   stage: build
   script:
     # Install dependencies via Homebrew (libva is Linux-only, skip on macOS)
-    - brew install cmake ninja boost curl miniupnpc node openssl opus pkg-config
+    # Use boost@1.85 to avoid Boost.Process v1/v2 API breaking changes in 1.87+
+    - brew install cmake ninja boost@1.85 curl miniupnpc node openssl opus pkg-config
     - brew install ffmpeg doxygen graphviz
-    # Export paths
-    - export PATH="/opt/homebrew/bin:$PATH"
-    - export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl/lib/pkgconfig"
+    # Export paths (include boost@1.85 keg-only paths)
+    - export PATH="/opt/homebrew/opt/boost@1.85/bin:/opt/homebrew/bin:$PATH"
+    - export PKG_CONFIG_PATH="/opt/homebrew/opt/boost@1.85/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl/lib/pkgconfig"
+    - export LDFLAGS="-L/opt/homebrew/opt/boost@1.85/lib"
+    - export CPPFLAGS="-I/opt/homebrew/opt/boost@1.85/include"
     # Initialize submodules
     - git submodule update --init --recursive
     # Get version from CMakeLists.txt
@@ -63,6 +66,9 @@ build-darwin:
     - cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
         -DCMAKE_OSX_ARCHITECTURES="arm64" \
+        -DBoost_ROOT=/opt/homebrew/opt/boost@1.85 \
+        -DBOOST_INCLUDEDIR=/opt/homebrew/opt/boost@1.85/include \
+        -DBOOST_LIBRARYDIR=/opt/homebrew/opt/boost@1.85/lib \
         -DSUNSHINE_ENABLE_WAYLAND=OFF \
         -DSUNSHINE_ENABLE_X11=OFF \
         -DSUNSHINE_ENABLE_DRM=OFF \
