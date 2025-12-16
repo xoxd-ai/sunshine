@@ -163,11 +163,12 @@ build-rocky:
     # Configure - Note: Rocky 9 doxygen is too old (1.8), disable docs (requires 1.10+)
     # The pre-built x265 uses vectorized math (_ZGVbN2v_log2) from glibc's libmvec.
     # We must link libmvec DYNAMICALLY (not statically) because IFUNC requires runtime resolution.
-    # CMAKE_EXE_LINKER_FLAGS places libs at START of link line (before x265).
+    # CMAKE_CXX_STANDARD_LIBRARIES places libs at END (after x265.a) where they can resolve symbols.
+    # Using full path to libmvec.so.1 to ensure linker finds it, plus --undefined to force symbol resolution.
     - |
       cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-        -DCMAKE_EXE_LINKER_FLAGS="-Wl,--no-as-needed -lmvec -lm -Wl,--as-needed" \
+        -DCMAKE_CXX_STANDARD_LIBRARIES="-Wl,--undefined=_ZGVbN2v_log2 /usr/lib64/libmvec.so.1 -lm" \
         -DBUILD_DOCS=OFF \
         -DSUNSHINE_ENABLE_WAYLAND=ON \
         -DSUNSHINE_ENABLE_X11=ON \
