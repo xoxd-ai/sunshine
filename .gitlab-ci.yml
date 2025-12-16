@@ -162,14 +162,13 @@ build-rocky:
     - echo "Building Sunshine version $SUNSHINE_VERSION"
     # Configure - Note: Rocky 9 doxygen is too old (1.8), disable docs (requires 1.10+)
     # The pre-built x265 uses vectorized math (_ZGVbN2v_log2) from glibc's libmvec.
-    # We must link libmvec DYNAMICALLY (not statically) because IFUNC requires runtime resolution.
-    # Single-pass linking fails because libmvec appears AFTER x265.a in the link order.
-    # Solution: Use --start-group/--end-group to enable multi-pass linking that resolves
-    # all symbols across the library group until no undefined references remain.
+    # gcc-toolset-13 has an isolated library search path that may not include /usr/lib64.
+    # Add explicit -L/usr/lib64 so the linker can find libmvec.so for SIMD vectorized math.
+    # Use --start-group/--end-group for multi-pass linking to resolve circular dependencies.
     - |
       cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-        -DCMAKE_EXE_LINKER_FLAGS="-Wl,--start-group" \
+        -DCMAKE_EXE_LINKER_FLAGS="-Wl,--start-group -L/usr/lib64" \
         -DCMAKE_CXX_STANDARD_LIBRARIES="-lmvec -lm -Wl,--end-group" \
         -DBUILD_DOCS=OFF \
         -DSUNSHINE_ENABLE_WAYLAND=ON \
