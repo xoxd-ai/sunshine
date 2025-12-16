@@ -50,8 +50,9 @@ build-darwin:
   script:
     # Install dependencies via Homebrew (libva is Linux-only, skip on macOS)
     # Use boost@1.85 to avoid Boost.Process v1/v2 API breaking changes in 1.87+
-    - brew install cmake ninja boost@1.85 curl miniupnpc node openssl opus pkg-config
-    - brew install ffmpeg doxygen graphviz
+    # Retry brew install in case of network issues (curl partial file errors)
+    - for i in 1 2 3; do brew install cmake ninja boost@1.85 curl miniupnpc node openssl opus pkg-config && break || sleep 10; done
+    - for i in 1 2 3; do brew install ffmpeg doxygen graphviz && break || sleep 10; done
     # Export paths (include boost@1.85 keg-only paths)
     - export PATH="/opt/homebrew/opt/boost@1.85/bin:/opt/homebrew/bin:$PATH"
     - export PKG_CONFIG_PATH="/opt/homebrew/opt/boost@1.85/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl/lib/pkgconfig"
