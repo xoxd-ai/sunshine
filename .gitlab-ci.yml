@@ -35,7 +35,7 @@ variables:
 
 # Rocky Linux template
 .rocky_linux:
-  image: rockylinux:10
+  image: rockylinux:9
   before_script:
     - dnf install -y epel-release
     - dnf update -y
