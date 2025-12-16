@@ -14,8 +14,6 @@ stages:
 variables:
   # Build configuration
   CMAKE_BUILD_TYPE: Release
-  # Artifact retention
-  ARTIFACT_RETENTION: "30 days"
   # Sunshine version (from CMakeLists.txt or CI_COMMIT_TAG)
   SUNSHINE_VERSION: "0.24.0"
 
@@ -58,10 +56,10 @@ build-darwin:
     # Get version from CMakeLists.txt
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
     - echo "Building Sunshine version $SUNSHINE_VERSION"
-    # Configure
+    # Configure (arm64 only for M1 runner)
     - cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-        -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+        -DCMAKE_OSX_ARCHITECTURES="arm64" \
         -DSUNSHINE_ENABLE_WAYLAND=OFF \
         -DSUNSHINE_ENABLE_X11=OFF \
         -DSUNSHINE_ENABLE_DRM=OFF \
