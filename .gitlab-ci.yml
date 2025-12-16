@@ -144,7 +144,7 @@ build-rocky:
     - dnf install -y boost-devel curl-devel miniupnpc-devel openssl-devel opus-devel
     - dnf install -y libva-devel libvdpau-devel libdrm-devel
     - dnf install -y libX11-devel libXtst-devel libXrandr-devel libXfixes-devel
-    - dnf install -y pulseaudio-libs-devel wayland-devel libcap-devel libevdev-devel
+    - dnf install -y pulseaudio-libs-devel wayland-devel libcap-devel libevdev-devel mesa-libgbm-devel
     # Install tray/notification dependencies (appindicator or libnotify)
     - dnf install -y libnotify-devel libappindicator-gtk3-devel || dnf install -y libnotify-devel || true
     - dnf install -y ffmpeg-free-devel || dnf install -y ffmpeg-devel || true
