@@ -162,14 +162,14 @@ build-rocky:
     - echo "Building Sunshine version $SUNSHINE_VERSION"
     # Configure - Note: Rocky 9 doxygen is too old (1.8), disable docs (requires 1.10+)
     # The pre-built x265 uses vectorized math (_ZGVbN2v_log2) from glibc's libmvec.
-    # gcc-toolset-13 uses an isolated linker that doesn't find libraries via -l search.
-    # Use the absolute path to libmvec.so.1 directly to bypass library search issues.
-    # Use --start-group/--end-group for multi-pass linking to resolve circular dependencies.
+    # CMake may add --as-needed flags that drop libmvec before static libraries are processed.
+    # Use --no-as-needed to force libmvec to be retained, then absolute path to bypass search issues.
+    # Use --push-state/--pop-state to scope the --no-as-needed flag to just libmvec.
     - |
       cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
         -DCMAKE_EXE_LINKER_FLAGS="-Wl,--start-group" \
-        -DCMAKE_CXX_STANDARD_LIBRARIES="/usr/lib64/libmvec.so.1 -lm -Wl,--end-group" \
+        -DCMAKE_CXX_STANDARD_LIBRARIES="-Wl,--push-state,--no-as-needed /usr/lib64/libmvec.so.1 -Wl,--pop-state -lm -Wl,--end-group" \
         -DBUILD_DOCS=OFF \
         -DSUNSHINE_ENABLE_WAYLAND=ON \
         -DSUNSHINE_ENABLE_X11=ON \
