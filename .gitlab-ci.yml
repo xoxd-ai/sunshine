@@ -291,64 +291,164 @@ sign-darwin:
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
     - |
       if [ -n "$APPLE_CERTIFICATE_BASE64" ]; then
-        echo "Setting up code signing..."
-        # Create temporary keychain
+        echo "=== Setting up code signing with CI best practices ==="
+        # Decode certificates
+        echo "$APPLE_CERTIFICATE_BASE64" | base64 -d > certificate.p12
+
+        # ========================================================================
+        # TEMPORARY KEYCHAIN WITH CI BEST PRACTICES
+        # ========================================================================
+        # Research-based approach from crush CI configuration:
+        # 1. Create temporary keychain with password (required for partition list)
+        # 2. Configure for CI: no timeout, no auto-lock
+        # 3. Set partition list with -s flag and "apple:" for headless access
+        # 4. Import only correct intermediates (Developer ID G2, NOT WWDR G2)
+        # 5. Include login keychain for intermediate cert trust validation
+        # References:
+        # - https://byteable.medium.com/creating-a-temporary-keychain-for-your-build-system-e598628c65fd
+        # - https://developer.apple.com/forums/thread/666107
+        # - https://discuss.circleci.com/t/cssmerr-tp-not-trusted-for-developer-id-certificate/49911
+        # ========================================================================
+
+        echo "=== Creating temporary keychain ==="
         KEYCHAIN_NAME="signing.keychain-db"
         KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+
+        # Create keychain with password
         security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+
+        # Configure for CI: no timeout, no auto-lock
         security set-keychain-settings "$KEYCHAIN_NAME"
+
+        # Unlock keychain
         security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+
+        # Set as default
         security default-keychain -s "$KEYCHAIN_NAME"
+
+        # Add to search list with login and SystemRootCertificates
         LOGIN_KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
+        echo "=== Setting keychain search list ==="
         security list-keychains -d user -s "$KEYCHAIN_NAME" "$LOGIN_KEYCHAIN" /System/Library/Keychains/SystemRootCertificates.keychain
 
-        # Import certificates
-        echo "$APPLE_CERTIFICATE_BASE64" | base64 -d > certificate.p12
+        echo "=== Current keychain search list ==="
+        security list-keychains -d user
+
+        # Import Developer ID G2 intermediate (NOT WWDR G2 - it chains to wrong root)
+        if [ -n "$APPLE_DEVELOPER_ID_CA_G2" ]; then
+          echo "=== Importing Developer ID Certification Authority G2 ==="
+          echo "$APPLE_DEVELOPER_ID_CA_G2" | base64 -d > DeveloperIDG2CA.cer
+
+          # Import to signing keychain
+          security import DeveloperIDG2CA.cer -k "$KEYCHAIN_NAME" -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/pkgbuild -A 2>&1 || true
+
+          # Also import to login keychain for trust validation
+          echo "=== Importing G2 intermediate to login keychain ==="
+          security import DeveloperIDG2CA.cer -k "$LOGIN_KEYCHAIN" -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/pkgbuild -A 2>&1 || true
+        fi
+
+        # Import Application certificate
+        echo "=== Importing Developer ID Application certificate ==="
         security import certificate.p12 -k "$KEYCHAIN_NAME" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -A
 
-        # Import installer certificate for productsign
+        # Import Installer certificate
         if [ -n "$APPLE_INSTALLER_CERTIFICATE_BASE64" ]; then
+          echo "=== Importing Developer ID Installer certificate ==="
           echo "$APPLE_INSTALLER_CERTIFICATE_BASE64" | base64 -d > installer_certificate.p12
-          security import installer_certificate.p12 -k "$KEYCHAIN_NAME" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/productsign -A
+          security import installer_certificate.p12 -k "$KEYCHAIN_NAME" -P "${APPLE_INSTALLER_CERTIFICATE_PASSWORD:-$APPLE_CERTIFICATE_PASSWORD}" -T /usr/bin/productsign -T /usr/bin/pkgbuild -A
+
+          # Remove WWDR CA - G2 if present (wrong root chain)
+          echo "=== Removing Apple WWDR CA - G2 if present ==="
+          security delete-certificate -c "Apple Worldwide Developer Relations CA - G2" "$KEYCHAIN_NAME" 2>&1 || echo "WWDR CA - G2 not found (OK)"
         fi
 
-        if [ -n "$APPLE_DEVELOPER_ID_CA_G2" ]; then
-          echo "$APPLE_DEVELOPER_ID_CA_G2" | base64 -d > DeveloperIDG2CA.cer
-          security import DeveloperIDG2CA.cer -k "$KEYCHAIN_NAME" -T /usr/bin/codesign -T /usr/bin/productsign -A || true
-        fi
-
-        # Set partition list
+        # Set partition list for headless CI access
+        echo "=== Setting partition list for headless access ==="
         security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
 
-        # Sign PKG
+        # Sign the app bundle if it exists
+        if [ -d "build/Sunshine.app" ]; then
+          echo "=== Signing Sunshine.app bundle ==="
+          codesign --force --options runtime --deep --sign "$APPLE_DEVELOPER_ID_APPLICATION" build/Sunshine.app
+          codesign --verify --verbose=4 build/Sunshine.app
+        fi
+
+        # Sign the standalone binary
+        if [ -f "build/sunshine" ]; then
+          echo "=== Signing sunshine binary ==="
+          codesign --force --options runtime --sign "$APPLE_DEVELOPER_ID_APPLICATION" build/sunshine
+          codesign --verify --verbose build/sunshine
+        fi
+
+        # Sign and notarize PKG
         if [ -n "$APPLE_DEVELOPER_ID_INSTALLER" ]; then
+          echo "=== Diagnostics before PKG signing ==="
+          echo "Certificates in signing keychain:"
+          security find-certificate -a "$KEYCHAIN_NAME" | grep "alis" || echo "No certificates found"
+
+          echo "Signing identities:"
+          security find-identity -v "$KEYCHAIN_NAME"
+
+          echo "=== Signing PKG with Developer ID Installer ==="
           productsign --sign "$APPLE_DEVELOPER_ID_INSTALLER" \
             --keychain "$KEYCHAIN_NAME" \
             build/installer/Sunshine-$SUNSHINE_VERSION-unsigned.pkg \
             build/installer/Sunshine-$SUNSHINE_VERSION.pkg
-          rm build/installer/Sunshine-$SUNSHINE_VERSION-unsigned.pkg
 
-          # Notarize
+          rm build/installer/Sunshine-$SUNSHINE_VERSION-unsigned.pkg
+          echo "=== PKG signed successfully ==="
+          pkgutil --check-signature build/installer/Sunshine-$SUNSHINE_VERSION.pkg
+
+          # Notarize if credentials available
           if [ -n "$APPLE_ID" ] && [ -n "$APPLE_NOTARIZE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
-            xcrun notarytool submit build/installer/Sunshine-$SUNSHINE_VERSION.pkg \
+            echo "=== Submitting PKG for notarization ==="
+            SUBMISSION_OUTPUT=$(xcrun notarytool submit build/installer/Sunshine-$SUNSHINE_VERSION.pkg \
               --apple-id "$APPLE_ID" \
               --password "$APPLE_NOTARIZE_PASSWORD" \
               --team-id "$APPLE_TEAM_ID" \
-              --wait
+              --wait 2>&1)
+            echo "$SUBMISSION_OUTPUT"
+
+            # Check for notarization failure
+            SUBMISSION_ID=$(echo "$SUBMISSION_OUTPUT" | grep "id:" | head -1 | awk '{print $2}')
+            if echo "$SUBMISSION_OUTPUT" | grep -q "status: Invalid"; then
+              echo "=== Notarization failed! Fetching log ==="
+              xcrun notarytool log "$SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_NOTARIZE_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" \
+                notarization-log.json || true
+              cat notarization-log.json || true
+              exit 1
+            fi
+
+            echo "=== Stapling notarization ticket ==="
             xcrun stapler staple build/installer/Sunshine-$SUNSHINE_VERSION.pkg
+            xcrun stapler validate build/installer/Sunshine-$SUNSHINE_VERSION.pkg
+            echo "=== PKG notarized and stapled successfully ==="
+          else
+            echo "=== Notarization skipped (set APPLE_ID, APPLE_NOTARIZE_PASSWORD, APPLE_TEAM_ID) ==="
           fi
+        else
+          echo "WARNING: No APPLE_DEVELOPER_ID_INSTALLER - PKG will not be signed"
+          mv build/installer/Sunshine-$SUNSHINE_VERSION-unsigned.pkg build/installer/Sunshine-$SUNSHINE_VERSION.pkg || true
         fi
-        echo "Code signing complete"
+
+        echo "=== Code signing complete ==="
       else
-        echo "No signing certificate - renaming unsigned package"
+        echo "=== No signing certificate - using unsigned package ==="
         mv build/installer/Sunshine-$SUNSHINE_VERSION-unsigned.pkg build/installer/Sunshine-$SUNSHINE_VERSION.pkg || true
       fi
+    # Generate SHA256 checksum
     - shasum -a 256 build/installer/Sunshine-$SUNSHINE_VERSION.pkg > build/installer/Sunshine-$SUNSHINE_VERSION.pkg.sha256 || true
+    - cat build/installer/Sunshine-$SUNSHINE_VERSION.pkg.sha256 || true
   artifacts:
     paths:
       - build/installer/Sunshine-*.pkg
       - build/installer/Sunshine-*.pkg.sha256
+      - notarization-log.json
     expire_in: 30 days
+    when: always
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
@@ -359,6 +459,8 @@ sign-darwin:
 # =============================================================================
 
 # Create GitLab Release
+# Publishes releases on both main branch commits and git tags
+# This allows CI builds to be immediately usable via GitLab releases API
 release:
   stage: deploy
   image: registry.gitlab.com/gitlab-org/release-cli:latest
@@ -371,17 +473,59 @@ release:
       optional: true
   script:
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
-    - echo "Creating release for Sunshine $SUNSHINE_VERSION"
+    # Generate release tag name: use git tag if available, otherwise commit SHA
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        RELEASE_TAG="$CI_COMMIT_TAG"
+        RELEASE_NAME="Tinyland Sunshine $CI_COMMIT_TAG"
+      else
+        RELEASE_TAG="v${SUNSHINE_VERSION}-${CI_COMMIT_SHORT_SHA}"
+        RELEASE_NAME="Tinyland Sunshine ${SUNSHINE_VERSION} (${CI_COMMIT_SHORT_SHA})"
+      fi
+    - echo "Creating release: $RELEASE_NAME (tag: $RELEASE_TAG)"
+    # Find actual artifact files
+    - find build -name "*.pkg" -o -name "*.rpm" || echo "Warning: Artifacts may not exist"
+    - |
+      DARWIN_PKG=$(find build/installer -name "Sunshine-*.pkg" -type f | head -1)
+      ROCKY_RPM=$(find build/rpm -name "sunshine-*.rpm" -type f | head -1)
+      echo "Darwin PKG: ${DARWIN_PKG:-NOT FOUND}"
+      echo "Rocky RPM: ${ROCKY_RPM:-NOT FOUND}"
   release:
-    tag_name: $CI_COMMIT_TAG
-    description: "Tinyland Sunshine $CI_COMMIT_TAG"
+    tag_name: "${RELEASE_TAG}"
+    name: "${RELEASE_NAME}"
+    description: |
+      Tinyland Sunshine ${SUNSHINE_VERSION}
+
+      ## Changes
+      - Built from commit ${CI_COMMIT_SHORT_SHA}
+      - Darwin PKG: macOS 12+ (Apple Silicon)
+      - Rocky RPM: Rocky Linux 9/10
+
+      ## Installation
+
+      ### macOS
+      ```bash
+      sudo installer -pkg Sunshine-${SUNSHINE_VERSION}.pkg -target /
+      ```
+
+      ### Rocky Linux
+      ```bash
+      sudo dnf install -y ./sunshine-${SUNSHINE_VERSION}-*.rpm
+      sudo setcap cap_sys_admin+p /usr/bin/sunshine
+      ```
     assets:
       links:
-        - name: "Sunshine macOS PKG"
-          url: "${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/build/installer/Sunshine-${SUNSHINE_VERSION}.pkg"
+        - name: "Sunshine-${SUNSHINE_VERSION}.pkg (macOS)"
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/${DARWIN_PKG}?job=sign-darwin"
           link_type: package
-        - name: "Sunshine Rocky Linux RPM"
-          url: "${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/build/rpm/sunshine-${SUNSHINE_VERSION}-1.tinyland.el10.x86_64.rpm"
+        - name: "sunshine-${SUNSHINE_VERSION}.rpm (Rocky Linux)"
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/${ROCKY_RPM}?job=package-rocky"
           link_type: package
   rules:
+    # Publish releases on main branch commits (CI builds immediately available)
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: on_success
+    # Also publish on git tags (traditional versioned releases)
     - if: $CI_COMMIT_TAG
+      when: on_success
+  allow_failure: true  # Don't block pipeline if release publishing fails
