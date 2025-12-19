@@ -123,7 +123,7 @@ build-darwin:
       - build/src/sunshine
     expire_in: 30 days
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
   allow_failure: true  # Build may fail on initial setup
 
@@ -186,7 +186,7 @@ build-rocky:
       - build/dist/sunshine
     expire_in: 30 days
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
   allow_failure: true  # Build may fail on initial setup
 
@@ -222,7 +222,7 @@ package-darwin:
       - build/installer/Sunshine-*.pkg
     expire_in: 30 days
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
   allow_failure: true
 
@@ -273,7 +273,7 @@ package-rocky:
       - build/rpm/*.rpm
     expire_in: 30 days
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
   allow_failure: true
 
@@ -450,7 +450,7 @@ sign-darwin:
     expire_in: 30 days
     when: always
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
   allow_failure: true
 
@@ -522,8 +522,8 @@ release:
           url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/${ROCKY_RPM}?job=package-rocky"
           link_type: package
   rules:
-    # Publish releases on main branch commits (CI builds immediately available)
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # Publish releases on master/main branch commits (CI builds immediately available)
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: on_success
     # Also publish on git tags (traditional versioned releases)
     - if: $CI_COMMIT_TAG
