@@ -119,8 +119,6 @@ build-darwin:
   artifacts:
     paths:
       - build/Sunshine.app
-      - build/sunshine
-      - build/src/sunshine
     expire_in: 30 days
   rules:
     - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -168,8 +166,8 @@ build-rocky:
     - |
       cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-        -DCMAKE_EXE_LINKER_FLAGS="-Wl,--start-group" \
-        -DCMAKE_CXX_STANDARD_LIBRARIES="-Wl,--push-state,--no-as-needed /usr/lib64/libmvec.so.1 -Wl,--pop-state -lm -Wl,--end-group" \
+        -DCMAKE_EXE_LINKER_FLAGS="-Wl,--start-group -Wl,--push-state,--no-as-needed -lmvec -Wl,--pop-state" \
+        -DCMAKE_CXX_STANDARD_LIBRARIES="-lmvec -lm -Wl,--end-group" \
         -DBUILD_DOCS=OFF \
         -DSUNSHINE_ENABLE_WAYLAND=ON \
         -DSUNSHINE_ENABLE_X11=ON \
@@ -206,10 +204,10 @@ package-darwin:
     - mkdir -p build/installer
     # Create PKG installer
     - mkdir -p pkg-root/Applications
-    - cp -R build/Sunshine.app pkg-root/Applications/ || true
-    # Also install binary to /usr/local/bin
+    - cp -R build/Sunshine.app pkg-root/Applications/
+    # Also install binary to /usr/local/bin (extract from app bundle)
     - mkdir -p pkg-root/usr/local/bin
-    - cp build/sunshine pkg-root/usr/local/bin/ || cp build/src/sunshine pkg-root/usr/local/bin/sunshine || true
+    - cp build/Sunshine.app/Contents/MacOS/sunshine pkg-root/usr/local/bin/sunshine
     # Build PKG
     - pkgbuild \
         --root pkg-root \
