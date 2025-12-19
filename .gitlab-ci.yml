@@ -460,7 +460,7 @@ sign-darwin:
 
 # Create GitLab Release
 # Publishes releases on both main branch commits and git tags
-# This allows CI builds to be immediately usable via GitLab releases API
+# Uses release-cli directly since we need dynamic tag names
 release:
   stage: deploy
   image: registry.gitlab.com/gitlab-org/release-cli:latest
@@ -471,61 +471,61 @@ release:
     - job: package-rocky
       artifacts: true
       optional: true
+  before_script:
+    - apk add --no-cache grep
   script:
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
-    # Generate release tag name: use git tag if available, otherwise commit SHA
+    # Generate release tag and name
     - |
       if [ -n "$CI_COMMIT_TAG" ]; then
-        RELEASE_TAG="$CI_COMMIT_TAG"
-        RELEASE_NAME="Tinyland Sunshine $CI_COMMIT_TAG"
+        export RELEASE_TAG="$CI_COMMIT_TAG"
+        export RELEASE_NAME="Tinyland Sunshine $CI_COMMIT_TAG"
       else
-        RELEASE_TAG="v${SUNSHINE_VERSION}-${CI_COMMIT_SHORT_SHA}"
-        RELEASE_NAME="Tinyland Sunshine ${SUNSHINE_VERSION} (${CI_COMMIT_SHORT_SHA})"
+        export RELEASE_TAG="v${SUNSHINE_VERSION}-${CI_COMMIT_SHORT_SHA}"
+        export RELEASE_NAME="Tinyland Sunshine ${SUNSHINE_VERSION} (${CI_COMMIT_SHORT_SHA})"
       fi
-    - echo "Creating release: $RELEASE_NAME (tag: $RELEASE_TAG)"
-    # Find actual artifact files
-    - find build -name "*.pkg" -o -name "*.rpm" || echo "Warning: Artifacts may not exist"
+    - echo "Creating release $RELEASE_NAME with tag $RELEASE_TAG"
+    # Create tag if it doesn't exist
     - |
-      DARWIN_PKG=$(find build/installer -name "Sunshine-*.pkg" -type f | head -1)
-      ROCKY_RPM=$(find build/rpm -name "sunshine-*.rpm" -type f | head -1)
-      echo "Darwin PKG: ${DARWIN_PKG:-NOT FOUND}"
-      echo "Rocky RPM: ${ROCKY_RPM:-NOT FOUND}"
-  release:
-    tag_name: "${RELEASE_TAG}"
-    name: "${RELEASE_NAME}"
-    description: |
-      Tinyland Sunshine ${SUNSHINE_VERSION}
+      if [ -z "$CI_COMMIT_TAG" ]; then
+        echo "Creating tag $RELEASE_TAG"
+        git config user.email "ci@tinyland.dev"
+        git config user.name "Tinyland CI"
+        git tag -a "$RELEASE_TAG" -m "Automated release $RELEASE_NAME"
+        git push origin "$RELEASE_TAG" || echo "Tag push failed (may already exist)"
+      fi
+    # Create release using release-cli
+    - |
+      release-cli create \
+        --name "$RELEASE_NAME" \
+        --tag-name "$RELEASE_TAG" \
+        --description "Tinyland Sunshine ${SUNSHINE_VERSION}
 
-      ## Changes
-      - Built from commit ${CI_COMMIT_SHORT_SHA}
+      Built from commit ${CI_COMMIT_SHORT_SHA}
+
+      ## Artifacts
       - Darwin PKG: macOS 12+ (Apple Silicon)
       - Rocky RPM: Rocky Linux 9/10
 
       ## Installation
 
       ### macOS
-      ```bash
+      \`\`\`bash
       sudo installer -pkg Sunshine-${SUNSHINE_VERSION}.pkg -target /
-      ```
+      \`\`\`
 
       ### Rocky Linux
-      ```bash
+      \`\`\`bash
       sudo dnf install -y ./sunshine-${SUNSHINE_VERSION}-*.rpm
       sudo setcap cap_sys_admin+p /usr/bin/sunshine
-      ```
-    assets:
-      links:
-        - name: "Sunshine-${SUNSHINE_VERSION}.pkg (macOS)"
-          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/${DARWIN_PKG}?job=sign-darwin"
-          link_type: package
-        - name: "sunshine-${SUNSHINE_VERSION}.rpm (Rocky Linux)"
-          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/${ROCKY_RPM}?job=package-rocky"
-          link_type: package
+      \`\`\`" \
+        --assets-link "{\"name\":\"Sunshine-${SUNSHINE_VERSION}.pkg (macOS)\",\"url\":\"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/build/installer/Sunshine-${SUNSHINE_VERSION}.pkg?job=sign-darwin\",\"link_type\":\"package\"}" \
+        --assets-link "{\"name\":\"sunshine-${SUNSHINE_VERSION}.rpm (Rocky Linux)\",\"url\":\"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/build/rpm/sunshine-${SUNSHINE_VERSION}-1.tinyland.el9.x86_64.rpm?job=package-rocky\",\"link_type\":\"package\"}"
   rules:
-    # Publish releases on master/main branch commits (CI builds immediately available)
+    # Publish releases on master/main branch commits
     - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: on_success
-    # Also publish on git tags (traditional versioned releases)
+    # Also publish on git tags
     - if: $CI_COMMIT_TAG
       when: on_success
-  allow_failure: true  # Don't block pipeline if release publishing fails
+  allow_failure: true
