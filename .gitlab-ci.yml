@@ -33,7 +33,7 @@ variables:
 
 # Rocky Linux template
 .rocky_linux:
-  image: rockylinux:10
+  image: rockylinux/rockylinux:10
   before_script:
     - dnf install -y epel-release
     - dnf makecache
