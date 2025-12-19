@@ -143,7 +143,7 @@ build-rocky:
         source /opt/rh/gcc-toolset-13/enable
       else
         echo "Using default GCC for Rocky 10..."
-        dnf install -y gcc gcc-c++
+        dnf install -y gcc gcc-c++ libstdc++-static
       fi
     - echo "Using GCC $(gcc --version | head -1)"
     - dnf install -y cmake ninja-build git doxygen graphviz
