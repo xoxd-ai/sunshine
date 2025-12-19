@@ -134,9 +134,17 @@ build-rocky:
     - dnf config-manager --set-enabled crb || true
     # Install build dependencies
     - dnf groupinstall -y "Development Tools"
-    # Install GCC 13 for C++23 <format> support (GCC 11 doesn't have it)
-    - dnf install -y gcc-toolset-13-gcc gcc-toolset-13-gcc-c++
-    - source /opt/rh/gcc-toolset-13/enable
+    # Rocky 10 comes with GCC 14+ by default (supports C++23)
+    # Rocky 9 needs gcc-toolset-13 for C++23 <format> support
+    - |
+      if dnf list gcc-toolset-13-gcc 2>/dev/null | grep -q gcc-toolset-13; then
+        echo "Installing GCC toolset 13 for Rocky 9..."
+        dnf install -y gcc-toolset-13-gcc gcc-toolset-13-gcc-c++
+        source /opt/rh/gcc-toolset-13/enable
+      else
+        echo "Using default GCC for Rocky 10..."
+        dnf install -y gcc gcc-c++
+      fi
     - echo "Using GCC $(gcc --version | head -1)"
     - dnf install -y cmake ninja-build git doxygen graphviz
     # Install Node.js 20 from NodeSource (Vite requires Node 18+)
