@@ -16,11 +16,10 @@ variables:
   CMAKE_BUILD_TYPE: Release
   # Sunshine version (from CMakeLists.txt or CI_COMMIT_TAG)
   SUNSHINE_VERSION: "0.24.0"
-  # Git configuration - shallow clones for faster checkout
+  # Git configuration - disable auto submodules, handle manually with shallow clones
+  # The build-deps submodule is 1.4GB which takes too long for GitLab's submodule handling
   GIT_DEPTH: 20
-  GIT_SUBMODULE_DEPTH: 1
-  GIT_SUBMODULE_STRATEGY: recursive
-  GIT_SUBMODULE_UPDATE_FLAGS: --jobs 4
+  GIT_SUBMODULE_STRATEGY: none
 
 # =============================================================================
 # Templates
@@ -101,8 +100,8 @@ build-darwin:
     - export PKG_CONFIG_PATH="/opt/homebrew/opt/boost@1.85/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl/lib/pkgconfig"
     - export LDFLAGS="-L/opt/homebrew/opt/boost@1.85/lib"
     - export CPPFLAGS="-I/opt/homebrew/opt/boost@1.85/include"
-    # Initialize submodules
-    - git submodule update --init --recursive
+    # Initialize submodules with shallow clones (build-deps is 1.4GB)
+    - git submodule update --init --recursive --depth 1 --jobs 4
     # Install npm dependencies and configure paths for vite
     # NODE_PATH is required so vite's temp config file can resolve the vite package
     - npm install
@@ -209,8 +208,8 @@ build-rocky:
     - dnf install -y ffmpeg-free-devel || dnf install -y ffmpeg-devel || true
     # Verify dynamic libmvec is available (required by pre-built x265 SIMD vectorization)
     - 'ls -la /usr/lib64/libmvec.so* || echo "WARNING: libmvec.so not found"'
-    # Initialize submodules
-    - git submodule update --init --recursive
+    # Initialize submodules with shallow clones (build-deps is 1.4GB)
+    - git submodule update --init --recursive --depth 1 --jobs 4
     # Get version
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
     - echo "Building Sunshine version $SUNSHINE_VERSION"
