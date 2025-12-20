@@ -216,13 +216,8 @@ package-darwin:
     # Also install binary to /usr/local/bin (extract from app bundle)
     - mkdir -p pkg-root/usr/local/bin
     - cp build/Sunshine.app/Contents/MacOS/sunshine pkg-root/usr/local/bin/sunshine
-    # Build PKG
-    - pkgbuild \
-        --root pkg-root \
-        --identifier "dev.tinyland.sunshine" \
-        --version "$SUNSHINE_VERSION" \
-        --install-location "/" \
-        build/installer/Sunshine-$SUNSHINE_VERSION-unsigned.pkg
+    # Build PKG (single line to avoid shell escaping issues)
+    - pkgbuild --root pkg-root --identifier "dev.tinyland.sunshine" --version "$SUNSHINE_VERSION" --install-location "/" build/installer/Sunshine-$SUNSHINE_VERSION-unsigned.pkg
   artifacts:
     paths:
       - build/installer/Sunshine-*.pkg
@@ -525,8 +520,8 @@ release:
       sudo dnf install -y ./sunshine-${SUNSHINE_VERSION}-*.rpm
       sudo setcap cap_sys_admin+p /usr/bin/sunshine
       \`\`\`" \
-        --assets-link "{\"name\":\"Sunshine-${SUNSHINE_VERSION}.pkg (macOS)\",\"url\":\"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/build/installer/Sunshine-${SUNSHINE_VERSION}.pkg?job=sign-darwin\",\"link_type\":\"package\"}" \
-        --assets-link "{\"name\":\"sunshine-${SUNSHINE_VERSION}.rpm (Rocky Linux)\",\"url\":\"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/build/rpm/sunshine-${SUNSHINE_VERSION}-1.tinyland.el9.x86_64.rpm?job=package-rocky\",\"link_type\":\"package\"}"
+        --assets-link "{\"name\":\"Sunshine-${SUNSHINE_VERSION}.pkg\",\"url\":\"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/build/installer/Sunshine-${SUNSHINE_VERSION}.pkg?job=sign-darwin\",\"link_type\":\"package\"}" \
+        --assets-link "{\"name\":\"sunshine-${SUNSHINE_VERSION}.rpm\",\"url\":\"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/build/rpm/sunshine-${SUNSHINE_VERSION}-1.tinyland.el10.x86_64.rpm?job=package-rocky\",\"link_type\":\"package\"}"
   rules:
     # Publish releases on master/main branch commits
     - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
