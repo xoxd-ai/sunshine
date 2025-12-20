@@ -21,7 +21,18 @@ variables:
 # Templates
 # =============================================================================
 
-# GitLab SaaS macOS runner template (Apple Silicon M1)
+# Tinyland Darwin native runner template (petting-zoo-mini M1)
+.darwin_native:
+  tags:
+    - tinyland
+    - darwin
+    - native
+  before_script:
+    - echo "Running on macOS $(sw_vers -productVersion)"
+    - echo "Xcode $(xcodebuild -version | head -1)"
+    - echo "Architecture $(uname -m)"
+
+# GitLab SaaS macOS runner template (fallback - requires compute minutes)
 .macos_saas_runners:
   tags:
     - saas-macos-medium-m1
@@ -49,7 +60,7 @@ variables:
 
 # macOS build using Homebrew dependencies
 build-darwin:
-  extends: .macos_saas_runners
+  extends: .darwin_native
   stage: build
   script:
     # Install dependencies via Homebrew (libva is Linux-only, skip on macOS)
@@ -206,7 +217,7 @@ build-rocky:
 
 # macOS PKG creation
 package-darwin:
-  extends: .macos_saas_runners
+  extends: .darwin_native
   stage: package
   needs:
     - job: build-darwin
@@ -287,7 +298,7 @@ package-rocky:
 # =============================================================================
 
 sign-darwin:
-  extends: .macos_saas_runners
+  extends: .darwin_native
   stage: sign
   needs:
     - job: package-darwin
