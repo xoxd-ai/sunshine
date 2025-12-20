@@ -31,8 +31,12 @@ variables:
     - echo "Xcode $(xcodebuild -version | head -1)"
     - echo "Architecture $(uname -m)"
 
-# Rocky Linux template
+# Rocky Linux template - use Tinyland honey runner (Rocky 10 with Docker)
 .rocky_linux:
+  tags:
+    - tinyland
+    - linux
+    - docker
   image: rockylinux/rockylinux:10
   before_script:
     - dnf install -y epel-release
@@ -464,6 +468,10 @@ sign-darwin:
 # Uses release-cli directly since we need dynamic tag names
 release:
   stage: deploy
+  tags:
+    - tinyland
+    - linux
+    - docker
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   needs:
     - job: sign-darwin
