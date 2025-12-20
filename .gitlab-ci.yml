@@ -52,7 +52,7 @@ variables:
           sudo ln -sf "$COLIMA_SOCK" /var/run/docker.sock 2>/dev/null || export DOCKER_HOST="unix://$COLIMA_SOCK"
         fi
       fi
-    - docker info --format 'Docker: {{.Name}} {{.ServerVersion}}'
+    - 'docker info --format "Docker: {{.Name}} {{.ServerVersion}}"'
 
 # GitLab SaaS macOS runner template (fallback - requires compute minutes)
 .macos_saas_runners:
