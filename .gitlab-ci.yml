@@ -32,6 +32,28 @@ variables:
     - echo "Xcode $(xcodebuild -version | head -1)"
     - echo "Architecture $(uname -m)"
 
+# Tinyland Darwin Docker runner template (petting-zoo-mini M1 with Colima)
+# Use this for jobs that need Docker on macOS
+.darwin_docker:
+  tags:
+    - tinyland
+    - darwin
+    - docker
+  before_script:
+    - echo "Running on macOS $(sw_vers -productVersion)"
+    - echo "Architecture $(uname -m)"
+    # Resolve Colima/Podman Docker socket conflicts
+    # Ensures /var/run/docker.sock points to Colima (not Podman)
+    - |
+      if [[ -S "$HOME/.colima/default/docker.sock" ]]; then
+        COLIMA_SOCK="$HOME/.colima/default/docker.sock"
+        if [[ ! -S /var/run/docker.sock ]] || [[ "$(readlink /var/run/docker.sock 2>/dev/null)" != "$COLIMA_SOCK" ]]; then
+          echo "Fixing Docker socket to point to Colima..."
+          sudo ln -sf "$COLIMA_SOCK" /var/run/docker.sock 2>/dev/null || export DOCKER_HOST="unix://$COLIMA_SOCK"
+        fi
+      fi
+    - docker info --format 'Docker: {{.Name}} {{.ServerVersion}}'
+
 # GitLab SaaS macOS runner template (fallback - requires compute minutes)
 .macos_saas_runners:
   tags:
