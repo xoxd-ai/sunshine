@@ -75,9 +75,11 @@ build-darwin:
     - export CPPFLAGS="-I/opt/homebrew/opt/boost@1.85/include"
     # Initialize submodules
     - git submodule update --init --recursive
-    # Install npm dependencies and add node_modules/.bin to PATH for vite
+    # Install npm dependencies and configure paths for vite
+    # NODE_PATH is required so vite's temp config file can resolve the vite package
     - npm install
     - export PATH="$PWD/node_modules/.bin:$PATH"
+    - export NODE_PATH="$PWD/node_modules:$NODE_PATH"
     # Get version from CMakeLists.txt
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
     - echo "Building Sunshine version $SUNSHINE_VERSION"
@@ -332,6 +334,9 @@ sign-darwin:
         echo "=== Creating temporary keychain ==="
         KEYCHAIN_NAME="signing.keychain-db"
         KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+
+        # Delete any existing keychain from previous runs
+        security delete-keychain "$KEYCHAIN_NAME" 2>/dev/null || true
 
         # Create keychain with password
         security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
