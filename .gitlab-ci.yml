@@ -88,7 +88,7 @@ variables:
 build-darwin:
   extends: .darwin_native
   stage: build
-  timeout: 2h  # Build takes ~45-60min, plus git checkout time
+  timeout: 4h  # Increased from 2h - build took 120min before timeout, allow 4h headroom
   script:
     # Install dependencies via Homebrew (libva is Linux-only, skip on macOS)
     # Use boost@1.85 to avoid Boost.Process v1/v2 API breaking changes in 1.87+

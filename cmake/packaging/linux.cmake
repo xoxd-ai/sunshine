@@ -3,6 +3,11 @@
 install(DIRECTORY "${SUNSHINE_SOURCE_ASSETS_DIR}/linux/assets/"
         DESTINATION "${SUNSHINE_ASSETS_DIR}")
 
+# Explicitly install apps.json to ensure it's included in RPM package
+# (Directory install should include it, but making it explicit to debug packaging)
+install(FILES "${SUNSHINE_SOURCE_ASSETS_DIR}/linux/assets/apps.json"
+        DESTINATION "${SUNSHINE_ASSETS_DIR}")
+
 # copy assets (excluding shaders) to build directory, for running without install
 file(COPY "${SUNSHINE_SOURCE_ASSETS_DIR}/linux/assets/"
         DESTINATION "${CMAKE_BINARY_DIR}/assets"
