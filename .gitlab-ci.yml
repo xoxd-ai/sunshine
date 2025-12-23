@@ -308,8 +308,15 @@ package-rocky:
       mkdir -p %{buildroot}%{_bindir}
       install -m 755 %{SOURCE0} %{buildroot}%{_bindir}/sunshine
 
+      # Install assets (apps.json and other config files)
+      mkdir -p %{buildroot}/usr/local/assets
+      if [ -f src_assets/linux/assets/apps.json ]; then
+        install -m 644 src_assets/linux/assets/apps.json %{buildroot}/usr/local/assets/
+      fi
+
       %files
       %{_bindir}/sunshine
+      /usr/local/assets/apps.json
       SPEC_EOF
     # Build RPM
     - cp build/dist/sunshine ~/rpmbuild/SOURCES/
