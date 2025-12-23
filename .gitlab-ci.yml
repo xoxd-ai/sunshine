@@ -88,7 +88,7 @@ variables:
 build-darwin:
   extends: .darwin_native
   stage: build
-  timeout: 4h  # Increased from 2h - build took 120min before timeout, allow 4h headroom
+  timeout: 6h  # Darwin builds take 3-4h, need 6h safety margin (verified from runner logs)
   script:
     # Install dependencies via Homebrew (libva is Linux-only, skip on macOS)
     # Use boost@1.85 to avoid Boost.Process v1/v2 API breaking changes in 1.87+
@@ -231,12 +231,16 @@ build-rocky:
         -DCUDA_FAIL_ON_MISSING=OFF
     # Build
     - cmake --build build --parallel
-    # Copy binary for packaging
+    # Copy binary and assets for packaging
     - mkdir -p build/dist
     - cp build/sunshine build/dist/ || cp build/src/sunshine build/dist/sunshine
+    # Copy assets directory for RPM packaging (includes apps.json)
+    - mkdir -p build/dist/assets
+    - cp -r src_assets/linux/assets/* build/dist/assets/ 2>/dev/null || echo "No Linux assets found (OK for Darwin-only builds)"
   artifacts:
     paths:
       - build/dist/sunshine
+      - build/dist/assets/
     expire_in: 30 days
   rules:
     - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -308,15 +312,16 @@ package-rocky:
       mkdir -p %{buildroot}%{_bindir}
       install -m 755 %{SOURCE0} %{buildroot}%{_bindir}/sunshine
 
-      # Install assets (apps.json and other config files)
+      # Install assets from build artifacts (apps.json and other config files)
       mkdir -p %{buildroot}/usr/local/assets
-      if [ -f src_assets/linux/assets/apps.json ]; then
-        install -m 644 src_assets/linux/assets/apps.json %{buildroot}/usr/local/assets/
+      # Copy all asset files from build/dist/assets/ (populated by build-rocky job)
+      if [ -d build/dist/assets ]; then
+        cp -r build/dist/assets/* %{buildroot}/usr/local/assets/ 2>/dev/null || true
       fi
 
       %files
       %{_bindir}/sunshine
-      /usr/local/assets/apps.json
+      /usr/local/assets/*
       SPEC_EOF
     # Build RPM
     - cp build/dist/sunshine ~/rpmbuild/SOURCES/
