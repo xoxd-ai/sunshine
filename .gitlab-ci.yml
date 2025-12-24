@@ -20,6 +20,8 @@ variables:
   # The build-deps submodule is 1.4GB which takes too long for GitLab's submodule handling
   GIT_DEPTH: 20
   GIT_SUBMODULE_STRATEGY: none
+  # Use git clone instead of git init + git fetch (fixes macOS fetch hangs)
+  GIT_STRATEGY: clone
   # Disable git bundleURI feature - causes hangs on large repos
   # See: https://gitlab.com/gitlab-org/gitlab-runner/-/issues/30299
   # CRITICAL: Flag name is FF_USE_GIT_BUNDLE_URIS (with 'S') not FF_USE_GIT_BUNDLE_URI
