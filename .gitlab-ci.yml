@@ -20,6 +20,9 @@ variables:
   # The build-deps submodule is 1.4GB which takes too long for GitLab's submodule handling
   GIT_DEPTH: 20
   GIT_SUBMODULE_STRATEGY: none
+  # Disable git bundleURI feature - causes hangs on large repos
+  # See: https://gitlab.com/gitlab-org/gitlab-runner/-/issues/30299
+  FF_USE_GIT_BUNDLE_URI: "false"
 
 # =============================================================================
 # Templates
