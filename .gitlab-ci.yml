@@ -101,14 +101,18 @@ build-darwin:
     # Install npm dependencies and build web UI before cmake
     # This avoids NODE_PATH issues when cmake's ninja subprocess spawns npm
     - npm install
+    # CRITICAL: Prepend local node_modules/.bin to PATH so we use local vite, not global brew vite
+    # The global vite can't find local node_modules when loading vite.config.cjs
     - export PATH="$PWD/node_modules/.bin:$PATH"
     - export NODE_PATH="$PWD/node_modules:$NODE_PATH"
+    # Verify we're using local vite
+    - which vite && vite --version
     # Pre-build web UI with correct paths (cmake will skip this if already built)
     - mkdir -p build/assets/web
     - |
       SUNSHINE_SOURCE_ASSETS_DIR="$PWD/src_assets" \
       SUNSHINE_ASSETS_DIR="$PWD/build" \
-      npm run build
+      ./node_modules/.bin/vite build
     # Get version from CMakeLists.txt
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
     - echo "Building Sunshine version $SUNSHINE_VERSION"
