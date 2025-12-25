@@ -9,7 +9,7 @@ set(SUNSHINE_PUBLISHER_ISSUE_URL "https://app.lizardbyte.dev/support"
 
 option(BUILD_DOCS "Build documentation" ON)
 option(BUILD_TESTS "Build tests" ON)
-option(NPM_OFFLINE "Use offline npm packages. You must ensure packages are in your npm cache." OFF)
+option(NPM_OFFLINE "Skip npm install in cmake (assumes npm install was run before cmake). Use for CI builds." OFF)
 
 option(BUILD_WERROR "Enable -Werror flag." OFF)
 
