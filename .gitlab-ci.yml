@@ -337,16 +337,8 @@ package-rocky:
       mkdir -p %{buildroot}%{_bindir}
       install -m 755 %{SOURCE0} %{buildroot}%{_bindir}/sunshine
 
-      # Install assets from build artifacts (apps.json and other config files)
-      mkdir -p %{buildroot}/usr/local/assets
-      # Copy all asset files from build/dist/assets/ (populated by build-rocky job)
-      if [ -d build/dist/assets ]; then
-        cp -r build/dist/assets/* %{buildroot}/usr/local/assets/ 2>/dev/null || true
-      fi
-
       %files
       %{_bindir}/sunshine
-      /usr/local/assets/*
       SPEC_EOF
     # Build RPM
     - cp build/dist/sunshine ~/rpmbuild/SOURCES/
