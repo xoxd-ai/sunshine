@@ -1,11 +1,9 @@
-import { fileURLToPath, URL } from 'node:url'
-import fs from 'fs';
-import { resolve } from 'path'
-import { defineConfig } from 'vite'
-import { ViteEjsPlugin } from "vite-plugin-ejs";
-import { codecovVitePlugin } from "@codecov/vite-plugin";
-import vue from '@vitejs/plugin-vue'
-import process from 'process'
+const fs = require('fs');
+const { resolve } = require('path');
+const { defineConfig } = require('vite');
+const { ViteEjsPlugin } = require("vite-plugin-ejs");
+const { codecovVitePlugin } = require("@codecov/vite-plugin");
+const vue = require('@vitejs/plugin-vue');
 
 /**
  * Before actually building the pages with Vite, we do an intermediate build step using ejs
@@ -43,7 +41,7 @@ else {
 let header = fs.readFileSync(resolve(assetsSrcPath, "template_header.html"))
 
 // https://vitejs.dev/config/
-export default defineConfig({
+module.exports = defineConfig({
     resolve: {
         alias: {
             vue: 'vue/dist/vue.esm-bundler.js'
