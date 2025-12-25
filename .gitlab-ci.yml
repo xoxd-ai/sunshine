@@ -4,6 +4,12 @@
 # Based on upstream: https://github.com/LizardByte/Sunshine
 # Tinyland modifications: Darwin PKG (notarized), Rocky 10 RPM, REST API enhancements
 
+# Pipeline auto-cancellation: Cancel older pipelines when new commits push
+# This prevents resource exhaustion from queued/running pipelines on rapid commits
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+
 stages:
   - build
   - test
@@ -85,6 +91,8 @@ build-darwin:
   extends: .darwin_native
   stage: build
   timeout: 6h  # Darwin builds take 3-4h, need 6h safety margin (verified from runner logs)
+  resource_group: darwin-build  # Only one Darwin build at a time (single M1 runner)
+  interruptible: true  # Allow auto-cancellation by newer pipelines
   script:
     # Install dependencies via Homebrew (libva is Linux-only, skip on macOS)
     # Use boost@1.85 to avoid Boost.Process v1/v2 API breaking changes in 1.87+
@@ -187,6 +195,8 @@ build-darwin:
 build-rocky:
   extends: .rocky_linux
   stage: build
+  resource_group: rocky-build  # Limit concurrent Rocky builds to prevent OOM
+  interruptible: true  # Allow auto-cancellation by newer pipelines
   script:
     # Install EPEL and PowerTools/CRB
     - dnf config-manager --set-enabled crb || true
@@ -266,6 +276,8 @@ build-rocky:
 package-darwin:
   extends: .darwin_native
   stage: package
+  resource_group: darwin-build  # Share resource group with build-darwin
+  interruptible: true
   needs:
     - job: build-darwin
       artifacts: true
@@ -293,6 +305,8 @@ package-darwin:
 package-rocky:
   extends: .rocky_linux
   stage: package
+  resource_group: rocky-build  # Share resource group with build-rocky
+  interruptible: true
   needs:
     - job: build-rocky
       artifacts: true
@@ -355,6 +369,8 @@ package-rocky:
 sign-darwin:
   extends: .darwin_native
   stage: sign
+  resource_group: darwin-build  # Share resource group with Darwin jobs
+  interruptible: true
   needs:
     - job: package-darwin
       artifacts: true
