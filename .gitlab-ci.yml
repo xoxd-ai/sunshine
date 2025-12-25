@@ -451,16 +451,31 @@ sign-darwin:
         # Sign the app bundle if it exists
         if [ -d "build/Sunshine.app" ]; then
           echo "=== Signing Sunshine.app bundle ==="
-          codesign --force --options runtime --deep --sign "$APPLE_DEVELOPER_ID_APPLICATION" build/Sunshine.app
+          codesign --force --options runtime --timestamp --deep --sign "$APPLE_DEVELOPER_ID_APPLICATION" build/Sunshine.app
           codesign --verify --verbose=4 build/Sunshine.app
         fi
 
-        # Sign the standalone binary
+        # Sign the standalone binary (needs timestamp for notarization)
         if [ -f "build/sunshine" ]; then
           echo "=== Signing sunshine binary ==="
-          codesign --force --options runtime --sign "$APPLE_DEVELOPER_ID_APPLICATION" build/sunshine
+          codesign --force --options runtime --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" build/sunshine
           codesign --verify --verbose build/sunshine
         fi
+
+        # Rebuild PKG with signed binaries (the package-darwin PKG has unsigned copies)
+        # This ensures both /Applications/Sunshine.app and /usr/local/bin/sunshine are signed
+        echo "=== Rebuilding PKG with signed binaries ==="
+        rm -rf pkg-root
+        mkdir -p pkg-root/Applications
+        cp -R build/Sunshine.app pkg-root/Applications/
+        mkdir -p pkg-root/usr/local/bin
+        # Copy the signed binary from the app bundle (not build/sunshine which may not exist)
+        cp build/Sunshine.app/Contents/MacOS/sunshine pkg-root/usr/local/bin/sunshine
+        # Build new unsigned PKG with signed contents
+        pkgbuild --root pkg-root --identifier "dev.tinyland.sunshine" --version "$SUNSHINE_VERSION" --install-location "/" build/installer/Sunshine-$SUNSHINE_VERSION-unsigned-new.pkg
+        # Remove old unsigned PKG
+        rm -f build/installer/Sunshine-$SUNSHINE_VERSION-unsigned.pkg
+        mv build/installer/Sunshine-$SUNSHINE_VERSION-unsigned-new.pkg build/installer/Sunshine-$SUNSHINE_VERSION-unsigned.pkg
 
         # Sign and notarize PKG
         if [ -n "$APPLE_DEVELOPER_ID_INSTALLER" ]; then
