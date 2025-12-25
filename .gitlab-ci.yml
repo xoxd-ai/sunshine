@@ -100,7 +100,8 @@ build-darwin:
     - git submodule update --init --recursive --depth 1 --jobs 4
     # Install npm dependencies and build web UI before cmake
     # This avoids NODE_PATH issues when cmake's ninja subprocess spawns npm
-    - npm install
+    # Use --include=dev to ensure devDependencies (vite, etc) are installed even if NODE_ENV=production
+    - npm install --include=dev
     # CRITICAL: Prepend local node_modules/.bin to PATH so we use local vite, not global brew vite
     # The global vite can't find local node_modules when loading vite.config.cjs
     - export PATH="$PWD/node_modules/.bin:$PATH"
