@@ -54,15 +54,14 @@ endif()
 #WebUI build
 find_program(NPM npm REQUIRED)
 
-# NPM_OFFLINE=ON: Skip npm install entirely (assumes CI already ran npm install)
-# Otherwise run npm install before build
+# NPM_OFFLINE=ON: Skip web-ui build entirely (assumes CI already ran npm run build)
+# Otherwise run npm install and npm run build
 if (NPM_OFFLINE)
+    message(STATUS "NPM_OFFLINE=ON: Skipping web-ui build (CI should have already built it)")
+    # Create a dummy target that does nothing - the web UI was already built by CI
     add_custom_target(web-ui ALL
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-            COMMENT "Building the Web UI (npm install skipped - NPM_OFFLINE=ON)"
-            COMMAND "${CMAKE_COMMAND}" -E env "SUNSHINE_BUILD_HOMEBREW=${NPM_BUILD_HOMEBREW}" "SUNSHINE_SOURCE_ASSETS_DIR=${NPM_SOURCE_ASSETS_DIR}" "SUNSHINE_ASSETS_DIR=${NPM_ASSETS_DIR}" "NODE_PATH=${CMAKE_SOURCE_DIR}/node_modules" "$<$<BOOL:${WIN32}>:cmd;/C>" "${NPM}" run build  # cmake-lint: disable=C0301
-            COMMAND_EXPAND_LISTS
-            VERBATIM)
+            COMMENT "Web UI build skipped (NPM_OFFLINE=ON, assuming CI pre-built)"
+            COMMAND "${CMAKE_COMMAND}" -E echo "Web UI pre-built by CI, skipping...")
 else()
     add_custom_target(web-ui ALL
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
