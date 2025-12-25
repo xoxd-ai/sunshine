@@ -471,8 +471,11 @@ sign-darwin:
         mkdir -p pkg-root/Applications
         cp -R build/Sunshine.app pkg-root/Applications/
         mkdir -p pkg-root/usr/local/bin
-        # Copy the signed binary from the app bundle (not build/sunshine which may not exist)
+        # Copy binary and re-sign it (copying can invalidate signatures)
         cp build/Sunshine.app/Contents/MacOS/sunshine pkg-root/usr/local/bin/sunshine
+        echo "=== Signing standalone /usr/local/bin/sunshine binary ==="
+        codesign --force --options runtime --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" pkg-root/usr/local/bin/sunshine
+        codesign --verify --verbose pkg-root/usr/local/bin/sunshine
         # Build new unsigned PKG with signed contents
         pkgbuild --root pkg-root --identifier "dev.tinyland.sunshine" --version "$SUNSHINE_VERSION" --install-location "/" build/installer/Sunshine-$SUNSHINE_VERSION-unsigned-new.pkg
         # Remove old unsigned PKG
