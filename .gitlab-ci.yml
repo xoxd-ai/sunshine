@@ -364,6 +364,8 @@ sign-darwin:
   resource_group: darwin-build  # Share resource group with Darwin jobs
   interruptible: true
   needs:
+    - job: build-darwin
+      artifacts: true
     - job: package-darwin
       artifacts: true
   script:
