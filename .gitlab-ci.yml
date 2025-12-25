@@ -111,6 +111,8 @@ build-darwin:
     - export CPATH="/opt/homebrew/opt/openssl/include:/opt/homebrew/opt/opus/include:$CPATH"
     - export LIBRARY_PATH="/opt/homebrew/opt/openssl/lib:/opt/homebrew/opt/opus/lib:$LIBRARY_PATH"
     - export CXXFLAGS="-I/opt/homebrew/opt/openssl/include -I/opt/homebrew/opt/opus/include $CXXFLAGS"
+    # NPM_OFFLINE=ON tells cmake to skip npm install (we already did it above)
+    # This avoids NODE_PATH issues where cmake's npm install can't find vite
     - cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
         -DCMAKE_OSX_ARCHITECTURES="arm64" \
@@ -128,7 +130,8 @@ build-darwin:
         -DSUNSHINE_ENABLE_X11=OFF \
         -DSUNSHINE_ENABLE_DRM=OFF \
         -DSUNSHINE_ENABLE_CUDA=OFF \
-        -DCUDA_FAIL_ON_MISSING=OFF
+        -DCUDA_FAIL_ON_MISSING=OFF \
+        -DNPM_OFFLINE=ON
     # Build
     - cmake --build build --parallel
     # Create app bundle structure
