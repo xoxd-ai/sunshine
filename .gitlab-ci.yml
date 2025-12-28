@@ -635,3 +635,35 @@ release:
     - if: $CI_COMMIT_TAG
       when: on_success
   allow_failure: true
+
+# =============================================================================
+# Trigger crush-dots GitOps Deployment
+# =============================================================================
+# Triggers the crush-dots (tinyland/lab) pipeline to deploy new Sunshine builds
+# This enables GitOps: sunshine build → crush-dots Molecule tests → staged deployment
+
+trigger:crush-dots:
+  stage: deploy
+  trigger:
+    project: tinyland/lab
+    branch: main
+    strategy: depend  # Wait for downstream pipeline result
+  variables:
+    TRIGGER_SOURCE: sunshine
+    SUNSHINE_VERSION: $SUNSHINE_VERSION
+    SUNSHINE_COMMIT: $CI_COMMIT_SHORT_SHA
+  needs:
+    - job: release
+      optional: true
+    - job: sign-darwin
+      optional: true
+    - job: package-rocky
+      optional: true
+  rules:
+    # Trigger on successful release (master/main)
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: on_success
+    # Also trigger on tags
+    - if: $CI_COMMIT_TAG
+      when: on_success
+  allow_failure: true  # Don't fail sunshine pipeline if crush-dots fails
