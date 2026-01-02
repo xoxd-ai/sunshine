@@ -158,6 +158,47 @@ build-darwin:
     - mkdir -p build/Sunshine.app/Contents/MacOS
     - mkdir -p build/Sunshine.app/Contents/Resources
     - cp build/sunshine build/Sunshine.app/Contents/MacOS/ || cp build/src/sunshine build/Sunshine.app/Contents/MacOS/sunshine
+    # Bundle Homebrew dependencies into app to avoid Gatekeeper issues with ad-hoc signed dylibs
+    - mkdir -p build/Sunshine.app/Contents/Frameworks
+    - |
+      echo "=== Bundling Homebrew dependencies into Frameworks ==="
+      # Copy and relink miniupnpc
+      if [ -f /opt/homebrew/opt/miniupnpc/lib/libminiupnpc.21.dylib ]; then
+        cp /opt/homebrew/opt/miniupnpc/lib/libminiupnpc.21.dylib build/Sunshine.app/Contents/Frameworks/
+        install_name_tool -change /opt/homebrew/opt/miniupnpc/lib/libminiupnpc.21.dylib \
+          @executable_path/../Frameworks/libminiupnpc.21.dylib \
+          build/Sunshine.app/Contents/MacOS/sunshine
+        echo "Bundled libminiupnpc.21.dylib"
+      fi
+      # Copy and relink opus
+      if [ -f /opt/homebrew/opt/opus/lib/libopus.0.dylib ]; then
+        cp /opt/homebrew/opt/opus/lib/libopus.0.dylib build/Sunshine.app/Contents/Frameworks/
+        install_name_tool -change /opt/homebrew/opt/opus/lib/libopus.0.dylib \
+          @executable_path/../Frameworks/libopus.0.dylib \
+          build/Sunshine.app/Contents/MacOS/sunshine
+        echo "Bundled libopus.0.dylib"
+      fi
+      # Copy and relink openssl
+      if [ -f /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib ]; then
+        cp /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib build/Sunshine.app/Contents/Frameworks/
+        cp /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib build/Sunshine.app/Contents/Frameworks/
+        install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib \
+          @executable_path/../Frameworks/libssl.3.dylib \
+          build/Sunshine.app/Contents/MacOS/sunshine
+        install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib \
+          @executable_path/../Frameworks/libcrypto.3.dylib \
+          build/Sunshine.app/Contents/MacOS/sunshine
+        # Fix inter-library dependencies (libssl depends on libcrypto)
+        install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib \
+          @executable_path/../Frameworks/libcrypto.3.dylib \
+          build/Sunshine.app/Contents/Frameworks/libssl.3.dylib
+        echo "Bundled openssl libraries"
+      fi
+      # Verify bundled dylibs
+      echo "=== Bundled frameworks: ==="
+      ls -la build/Sunshine.app/Contents/Frameworks/
+      echo "=== Updated library references: ==="
+      otool -L build/Sunshine.app/Contents/MacOS/sunshine | head -20
     - |
       cat > build/Sunshine.app/Contents/Info.plist << 'PLIST_EOF'
       <?xml version="1.0" encoding="UTF-8"?>
@@ -452,6 +493,16 @@ sign-darwin:
 
         # Sign the app bundle if it exists
         if [ -d "build/Sunshine.app" ]; then
+          echo "=== Signing bundled frameworks first (dependencies before app) ==="
+          if [ -d "build/Sunshine.app/Contents/Frameworks" ]; then
+            for dylib in build/Sunshine.app/Contents/Frameworks/*.dylib; do
+              if [ -f "$dylib" ]; then
+                echo "Signing framework: $dylib"
+                codesign --force --options runtime --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" "$dylib"
+                codesign --verify --verbose "$dylib"
+              fi
+            done
+          fi
           echo "=== Signing Sunshine.app bundle ==="
           codesign --force --options runtime --timestamp --deep --sign "$APPLE_DEVELOPER_ID_APPLICATION" build/Sunshine.app
           codesign --verify --verbose=4 build/Sunshine.app
