@@ -302,8 +302,10 @@ build-rocky:
         -DSUNSHINE_ENABLE_DRM=ON \
         -DSUNSHINE_ENABLE_CUDA=OFF \
         -DCUDA_FAIL_ON_MISSING=OFF
-    # Build
-    - cmake --build build --parallel
+    # Build with limited parallelism to avoid OOM (Boost headers are memory-intensive)
+    # 4 parallel jobs × 4-6GB per compilation = 16-24GB, exceeds container 16GB limit
+    # Use -j2 to stay within memory budget
+    - cmake --build build --parallel 2
     # Copy binary and assets for packaging
     - mkdir -p build/dist
     - cp build/sunshine build/dist/ || cp build/src/sunshine build/dist/sunshine
