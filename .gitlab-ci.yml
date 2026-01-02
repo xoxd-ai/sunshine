@@ -93,7 +93,24 @@ build-darwin:
   stage: build
   timeout: 6h  # Darwin builds take 3-4h, need 6h safety margin (verified from runner logs)
   resource_group: darwin-build  # Only one Darwin build at a time (single M1 runner)
+  variables:
+    # WORKAROUND: gitlab-runner's git fetch hangs indefinitely on macOS with CI token auth
+    # Manual git clone works fine, so we bypass gitlab-runner's git handling entirely
+    # See: https://gitlab.com/gitlab-org/gitlab-runner/-/issues/30299
+    GIT_STRATEGY: none
   script:
+    # WORKAROUND: Manual git clone since gitlab-runner's git fetch hangs on macOS
+    # Clone repo using CI_JOB_TOKEN for authentication (same token, different method)
+    - |
+      echo "=== Manual git clone (workaround for macOS gitlab-runner git hang) ==="
+      rm -rf "$CI_PROJECT_DIR" 2>/dev/null || true
+      mkdir -p "$CI_PROJECT_DIR"
+      cd "$CI_PROJECT_DIR"
+      git clone --depth "${GIT_DEPTH:-20}" \
+        "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git" . \
+        --branch "${CI_COMMIT_REF_NAME}" --single-branch
+      git checkout "${CI_COMMIT_SHA}"
+      echo "Git clone complete: $(du -sh .git | cut -f1) downloaded"
     # Install dependencies via Homebrew (libva is Linux-only, skip on macOS)
     # Use boost@1.85 to avoid Boost.Process v1/v2 API breaking changes in 1.87+
     # Retry brew install in case of network issues (curl partial file errors)
@@ -320,7 +337,21 @@ package-darwin:
   needs:
     - job: build-darwin
       artifacts: true
+  variables:
+    # WORKAROUND: gitlab-runner's git fetch hangs indefinitely on macOS with CI token auth
+    GIT_STRATEGY: none
   script:
+    # WORKAROUND: Manual git clone since gitlab-runner's git fetch hangs on macOS
+    - |
+      echo "=== Manual git clone (workaround for macOS gitlab-runner git hang) ==="
+      rm -rf "$CI_PROJECT_DIR" 2>/dev/null || true
+      mkdir -p "$CI_PROJECT_DIR"
+      cd "$CI_PROJECT_DIR"
+      git clone --depth "${GIT_DEPTH:-20}" \
+        "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git" . \
+        --branch "${CI_COMMIT_REF_NAME}" --single-branch
+      git checkout "${CI_COMMIT_SHA}"
+      echo "Git clone complete: $(du -sh .git | cut -f1) downloaded"
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
     - mkdir -p build/installer
     # Create PKG installer
@@ -405,7 +436,21 @@ sign-darwin:
       artifacts: true
     - job: package-darwin
       artifacts: true
+  variables:
+    # WORKAROUND: gitlab-runner's git fetch hangs indefinitely on macOS with CI token auth
+    GIT_STRATEGY: none
   script:
+    # WORKAROUND: Manual git clone since gitlab-runner's git fetch hangs on macOS
+    - |
+      echo "=== Manual git clone (workaround for macOS gitlab-runner git hang) ==="
+      rm -rf "$CI_PROJECT_DIR" 2>/dev/null || true
+      mkdir -p "$CI_PROJECT_DIR"
+      cd "$CI_PROJECT_DIR"
+      git clone --depth "${GIT_DEPTH:-20}" \
+        "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git" . \
+        --branch "${CI_COMMIT_REF_NAME}" --single-branch
+      git checkout "${CI_COMMIT_SHA}"
+      echo "Git clone complete: $(du -sh .git | cut -f1) downloaded"
     - export SUNSHINE_VERSION=$(grep -m1 'project.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.24.0")
     - |
       if [ -n "$APPLE_CERTIFICATE_BASE64" ]; then
