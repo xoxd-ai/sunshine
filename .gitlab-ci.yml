@@ -39,11 +39,18 @@ variables:
 # =============================================================================
 
 # Tinyland Darwin native runner template (petting-zoo-mini M1)
+# IMPORTANT: Reset git variables to defaults - global FF_USE_GIT_BUNDLE_URIS:false causes
+# git hang on macOS shell executor. Moonlight uses defaults and works fine.
 .darwin_native:
   tags:
     - tinyland
     - darwin
     - native
+  variables:
+    # Reset to defaults for Darwin - global settings cause git hang on macOS shell executor
+    # Moonlight CI uses all defaults and git completes in ~1 second
+    GIT_STRATEGY: fetch
+    FF_USE_GIT_BUNDLE_URIS: "true"  # Re-enable bundle URIs for Darwin
   before_script:
     - echo "Running on macOS $(sw_vers -productVersion)"
     - echo "Xcode $(xcodebuild -version | head -1)"
