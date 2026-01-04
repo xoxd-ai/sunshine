@@ -191,20 +191,47 @@ build-darwin:
         echo "Bundled libopus.0.dylib"
       fi
       # Copy and relink openssl
+      # CRITICAL: Homebrew symlinks /opt/homebrew/opt -> /opt/homebrew/Cellar, but libraries
+      # may embed either path. We must fix BOTH the symlink path AND the Cellar path.
       if [ -f /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib ]; then
         cp /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib build/Sunshine.app/Contents/Frameworks/
         cp /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib build/Sunshine.app/Contents/Frameworks/
+
+        # Get the actual Cellar path (resolve symlink)
+        OPENSSL_CELLAR_PATH=$(readlink -f /opt/homebrew/opt/openssl@3/lib | sed 's|/lib$||')
+        echo "OpenSSL Cellar path: $OPENSSL_CELLAR_PATH"
+
+        # Fix main binary - try both opt and Cellar paths
         install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib \
           @executable_path/../Frameworks/libssl.3.dylib \
-          build/Sunshine.app/Contents/MacOS/sunshine
+          build/Sunshine.app/Contents/MacOS/sunshine 2>/dev/null || true
+        install_name_tool -change "$OPENSSL_CELLAR_PATH/lib/libssl.3.dylib" \
+          @executable_path/../Frameworks/libssl.3.dylib \
+          build/Sunshine.app/Contents/MacOS/sunshine 2>/dev/null || true
         install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib \
           @executable_path/../Frameworks/libcrypto.3.dylib \
-          build/Sunshine.app/Contents/MacOS/sunshine
-        # Fix inter-library dependencies (libssl depends on libcrypto)
+          build/Sunshine.app/Contents/MacOS/sunshine 2>/dev/null || true
+        install_name_tool -change "$OPENSSL_CELLAR_PATH/lib/libcrypto.3.dylib" \
+          @executable_path/../Frameworks/libcrypto.3.dylib \
+          build/Sunshine.app/Contents/MacOS/sunshine 2>/dev/null || true
+
+        # Fix libssl's dependency on libcrypto - try both paths
         install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib \
           @executable_path/../Frameworks/libcrypto.3.dylib \
+          build/Sunshine.app/Contents/Frameworks/libssl.3.dylib 2>/dev/null || true
+        install_name_tool -change "$OPENSSL_CELLAR_PATH/lib/libcrypto.3.dylib" \
+          @executable_path/../Frameworks/libcrypto.3.dylib \
+          build/Sunshine.app/Contents/Frameworks/libssl.3.dylib 2>/dev/null || true
+
+        # Fix the library install names (id) so they use @rpath
+        install_name_tool -id @rpath/libssl.3.dylib \
           build/Sunshine.app/Contents/Frameworks/libssl.3.dylib
-        echo "Bundled openssl libraries"
+        install_name_tool -id @rpath/libcrypto.3.dylib \
+          build/Sunshine.app/Contents/Frameworks/libcrypto.3.dylib
+
+        echo "Bundled openssl libraries with fixed paths"
+        echo "=== libssl dependencies after fix: ==="
+        otool -L build/Sunshine.app/Contents/Frameworks/libssl.3.dylib
       fi
       # Verify bundled dylibs
       echo "=== Bundled frameworks: ==="
