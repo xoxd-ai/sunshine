@@ -704,6 +704,7 @@ namespace nvhttp {
     tree.put("root.appversion", VERSION);
     tree.put("root.GfeVersion", GFE_VERSION);
     tree.put("root.uniqueid", http::unique_id);
+    tree.put("root.CertOnlyAuth", 1);  // Indicate certificate-only authentication is supported
     tree.put("root.HttpsPort", net::map_port(PORT_HTTPS));
     tree.put("root.ExternalPort", net::map_port(PORT_HTTP));
     tree.put("root.MaxLumaPixelsHEVC", video::active_hevc_mode > 1 ? "1869449984" : "0");
