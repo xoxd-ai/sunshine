@@ -682,12 +682,12 @@ namespace nvhttp {
 
     int pair_status = 0;
     if constexpr (std::is_same_v<SunshineHTTPS, T>) {
-      auto args = request->parse_query_string();
-      auto clientID = args.find("uniqueid"s);
-
-      if (clientID != std::end(args)) {
-        pair_status = 1;
-      }
+      // Certificate-only authentication: If we reached here over HTTPS, the client
+      // certificate was already verified by the verify callback (lines 1085-1128).
+      // The TLS handshake only succeeds if the client cert is in cert_chain.
+      // Therefore, all HTTPS requests from certificate-verified clients are considered paired.
+      pair_status = 1;
+      BOOST_LOG(info) << "Certificate-authenticated HTTPS client - PairStatus=1"sv;
     }
 
     auto local_endpoint = request->local_endpoint();
@@ -1082,6 +1082,13 @@ namespace nvhttp {
     http_server_t http_server;
 
     // Verify certificates after establishing connection
+    // SECURITY MODEL: Certificate-only authentication
+    // When a request reaches the HTTPS handler, it means:
+    // 1. The TLS handshake completed successfully
+    // 2. The client presented a certificate
+    // 3. The certificate was verified against cert_chain (pre-authorized clients)
+    // Therefore, HTTPS requests from verified clients are considered paired (PairStatus=1).
+    // This eliminates the need for PIN-based pairing for certificate-verified clients.
     https_server.verify = [add_cert](SSL *ssl) {
       crypto::x509_t x509 {
 #if OPENSSL_VERSION_MAJOR >= 3
